@@ -105,24 +105,41 @@ namespace Microsoft.AspNetCore.Mvc.Formatters
                 request.Body.Seek(0L, SeekOrigin.Begin);
             }
 
-            using (var xmlReader = CreateXmlReader(new NonDisposableStream(request.Body), encoding))
+            try
             {
-                var type = GetSerializableType(context.ModelType);
-
-                var serializer = GetCachedSerializer(type);
-
-                var deserializedObject = serializer.Deserialize(xmlReader);
-
-                // Unwrap only if the original type was wrapped.
-                if (type != context.ModelType)
+                using (var xmlReader = CreateXmlReader(new NonDisposableStream(request.Body), encoding))
                 {
-                    if (deserializedObject is IUnwrappable unwrappable)
-                    {
-                        deserializedObject = unwrappable.Unwrap(declaredType: context.ModelType);
-                    }
-                }
+                    var type = GetSerializableType(context.ModelType);
 
-                return InputFormatterResult.Success(deserializedObject);
+                    var serializer = GetCachedSerializer(type);
+
+                    var deserializedObject = serializer.Deserialize(xmlReader);
+
+                    // Unwrap only if the original type was wrapped.
+                    if (type != context.ModelType)
+                    {
+                        if (deserializedObject is IUnwrappable unwrappable)
+                        {
+                            deserializedObject = unwrappable.Unwrap(declaredType: context.ModelType);
+                        }
+                    }
+
+                    return InputFormatterResult.Success(deserializedObject);
+                }
+            }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                // XmlSerializer wraps actual exceptions (like FormatException or XmlException) into an InvalidOperationException
+                // https://github.com/dotnet/corefx/blob/master/src/System.Private.Xml/src/System/Xml/Serialization/XmlSerializer.cs#L652
+                var innerException = invalidOperationException.InnerException;
+                if (innerException is FormatException || innerException is XmlException)
+                {
+                    throw new InputFormatException("Error deserializing input", innerException);
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 

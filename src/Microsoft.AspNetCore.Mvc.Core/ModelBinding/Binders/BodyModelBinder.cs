@@ -177,9 +177,15 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
                     bindingContext.ModelState.AddModelError(modelBindingKey, message);
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                bindingContext.ModelState.AddModelError(modelBindingKey, ex, bindingContext.ModelMetadata);
+                if (!_options.SendBadRequestForAllExceptionsDuringDeserialization
+                    && !(exception is InputFormatException))
+                {
+                    throw;
+                }
+
+                bindingContext.ModelState.AddModelError(modelBindingKey, exception, bindingContext.ModelMetadata);
             }
         }
     }

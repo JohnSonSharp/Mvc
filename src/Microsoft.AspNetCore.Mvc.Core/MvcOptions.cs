@@ -168,5 +168,7 @@ namespace Microsoft.AspNetCore.Mvc
         /// <see langword="false"/> by default.
         /// </summary>
         public bool AllowBindingUndefinedValueToEnumType { get; set; }
+
+        public bool SendBadRequestForAllExceptionsDuringDeserialization { get; set; } = true;
     }
 }

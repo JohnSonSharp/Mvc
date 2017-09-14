@@ -124,23 +124,30 @@ namespace Microsoft.AspNetCore.Mvc.Formatters
                 request.Body.Seek(0L, SeekOrigin.Begin);
             }
 
-            using (var xmlReader = CreateXmlReader(new NonDisposableStream(request.Body), encoding))
+            try
             {
-                var type = GetSerializableType(context.ModelType);
-                var serializer = GetCachedSerializer(type);
-
-                var deserializedObject = serializer.ReadObject(xmlReader);
-
-                // Unwrap only if the original type was wrapped.
-                if (type != context.ModelType)
+                using (var xmlReader = CreateXmlReader(new NonDisposableStream(request.Body), encoding))
                 {
-                    if (deserializedObject is IUnwrappable unwrappable)
-                    {
-                        deserializedObject = unwrappable.Unwrap(declaredType: context.ModelType);
-                    }
-                }
+                    var type = GetSerializableType(context.ModelType);
+                    var serializer = GetCachedSerializer(type);
 
-                return InputFormatterResult.Success(deserializedObject);
+                    var deserializedObject = serializer.ReadObject(xmlReader);
+
+                    // Unwrap only if the original type was wrapped.
+                    if (type != context.ModelType)
+                    {
+                        if (deserializedObject is IUnwrappable unwrappable)
+                        {
+                            deserializedObject = unwrappable.Unwrap(declaredType: context.ModelType);
+                        }
+                    }
+
+                    return InputFormatterResult.Success(deserializedObject);
+                }
+            }
+            catch (SerializationException serializationException)
+            {
+                throw new InputFormatException("Error deserializing the input", serializationException);
             }
         }
 
